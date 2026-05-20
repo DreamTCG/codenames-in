@@ -421,7 +421,8 @@ window.showSetup = function() {
 
 window.startGame = function() {
   document.getElementById('setup-screen').classList.add('hidden');
-  if (!gameState) createNewGame();
+  // Always create a new game when pressing เริ่มเกม
+  createNewGame();
 }
 
 window.confirmNewGame = function() {
@@ -610,15 +611,23 @@ window.addEventListener('DOMContentLoaded', () => {
   const urlRoom = getRoomFromURL();
   if (urlRoom) {
     roomId = urlRoom;
-    document.getElementById('room-display').textContent = roomId;
-    document.getElementById('header-room').textContent = roomId;
-    const spymasterURL = `${window.location.origin}${window.location.pathname.replace('index.html','').replace(/\/$/, '')}/spymaster.html?room=${roomId}`;
-    document.getElementById('spymaster-url').textContent = spymasterURL;
-    generateQR(spymasterURL);
-    listenRoom();
   } else {
-    window.newRoom();
+    roomId = generateRoomId();
+    const url = new URL(window.location.href);
+    url.searchParams.set('room', roomId);
+    window.history.replaceState({}, '', url);
   }
+
+  document.getElementById('room-display').textContent = roomId;
+  document.getElementById('header-room').textContent = roomId;
+
+  const base = window.location.pathname.replace(/index\.html$/, '').replace(/\/$/, '');
+  const spymasterURL = `${window.location.origin}${base}/spymaster.html?room=${roomId}`;
+  document.getElementById('spymaster-url').textContent = spymasterURL;
+  generateQR(spymasterURL);
+
+  // Always show setup screen on load, but listen in background
+  listenRoom();
 });
 </script>
 </body>

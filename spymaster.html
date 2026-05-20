@@ -114,18 +114,7 @@
   .ss-turn span { color: var(--gold); }
 
   /* CLUE INPUT */
-  .clue-section {
-    padding: 12px 16px;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-  .clue-title {
-    font-size: 10px; letter-spacing: 3px;
-    color: var(--text-dim); text-transform: uppercase;
-    margin-bottom: 8px;
-  }
-  .clue-row { display: flex; gap: 8px; align-items: center; }
+  .clue-row { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
   .clue-input {
     flex: 1;
     background: #111;
@@ -171,44 +160,6 @@
   }
   .send-btn:hover { opacity: 0.85; }
   .send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-
-  /* CURRENT CLUE DISPLAY */
-  .current-clue {
-    margin: 8px 16px;
-    padding: 10px 14px;
-    background: #111;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    display: flex; align-items: center; gap: 10px;
-    flex-shrink: 0;
-  }
-  .cc-label { font-size: 10px; letter-spacing: 2px; color: var(--text-dim); }
-  .cc-word { font-family: 'Bebas Neue', cursive; font-size: 20px; letter-spacing: 3px; color: var(--gold); }
-  .cc-num {
-    font-family: 'Bebas Neue', cursive; font-size: 20px;
-    background: var(--border); width: 32px; height: 32px;
-    display: flex; align-items: center; justify-content: center;
-    border-radius: 4px;
-  }
-  .cc-empty { font-size: 12px; color: var(--text-dim); font-style: italic; }
-
-  /* END TURN BUTTON */
-  .end-turn-wrap {
-    padding: 8px 16px;
-    flex-shrink: 0;
-  }
-  .end-turn-btn {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: transparent;
-    color: var(--text-dim);
-    font-family: 'Bebas Neue', cursive;
-    font-size: 16px; letter-spacing: 2px;
-    cursor: pointer; transition: all 0.15s;
-  }
-  .end-turn-btn:hover { border-color: var(--text-dim); color: var(--text); }
 
   /* BOARD */
   .board-wrap { flex: 1; overflow-y: auto; padding: 8px 12px 16px; }
@@ -265,8 +216,67 @@
   }
   .ov-sub { color: var(--text-dim); font-size: 16px; text-align: center; }
 
-  /* NOT YOUR TURN */
-  .not-turn-banner {
+  /* ACTION BAR */
+  .action-bar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .action-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+  }
+  .toggle-clue-btn {
+    flex-shrink: 0;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--team-color);
+    background: transparent;
+    color: var(--team-color);
+    font-family: 'Bebas Neue', cursive;
+    font-size: 14px; letter-spacing: 1px;
+    cursor: pointer; transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .toggle-clue-btn.active {
+    background: var(--team-color);
+    color: white;
+  }
+  .toggle-clue-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .end-turn-btn-sm {
+    flex-shrink: 0;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    font-family: 'Bebas Neue', cursive;
+    font-size: 14px; letter-spacing: 1px;
+    cursor: pointer; transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .end-turn-btn-sm:hover { border-color: var(--text); color: var(--text); }
+
+  /* CLUE PANEL (collapsible) */
+  .clue-panel {
+    padding: 0 12px 12px;
+    border-top: 1px solid var(--border);
+  }
+  .clue-panel.hidden { display: none; }
+
+  /* CURRENT CLUE inline */
+  #current-clue-display {
+    flex: 1;
+    display: flex; align-items: center; gap: 8px;
+    overflow: hidden;
+  }
+  #current-clue-display.cc-empty {
+    font-size: 11px; color: var(--text-dim); font-style: italic;
+  }
+
+
     background: #1a1a1a;
     border: 1px solid var(--border);
     padding: 10px 16px;
@@ -317,24 +327,24 @@
   ⏳ รอตาของคุณ...
 </div>
 
-<!-- CLUE INPUT -->
-<div class="clue-section" id="clue-section">
-  <div class="clue-title">ให้คำใบ้</div>
-  <div class="clue-row">
-    <input class="clue-input" id="clue-word-input" type="text" maxlength="20" placeholder="คำใบ้...">
+<!-- ACTION BAR: clue toggle + end turn + current clue -->
+<div class="action-bar" id="action-bar">
+  <div class="action-row">
+    <button class="toggle-clue-btn" id="toggle-clue-btn" onclick="toggleCluePanel()">
+      <span id="toggle-icon">✏️</span> <span id="toggle-label">ให้คำใบ้</span>
+    </button>
+    <div id="current-clue-display" class="cc-empty">ยังไม่มีคำใบ้</div>
+    <button class="end-turn-btn-sm" onclick="endTurn()">⏩ จบตา</button>
   </div>
-  <div class="num-select" id="num-select"></div>
-  <button class="send-btn" id="send-clue-btn" onclick="sendClue()" disabled>📤 ส่งคำใบ้</button>
-</div>
 
-<!-- CURRENT CLUE -->
-<div class="current-clue">
-  <div id="current-clue-display" class="cc-empty">ยังไม่มีคำใบ้</div>
-</div>
-
-<!-- END TURN -->
-<div class="end-turn-wrap">
-  <button class="end-turn-btn" onclick="endTurn()">⏩ จบตา (End Turn)</button>
+  <!-- COLLAPSIBLE CLUE PANEL -->
+  <div class="clue-panel hidden" id="clue-panel">
+    <div class="clue-row">
+      <input class="clue-input" id="clue-word-input" type="text" maxlength="20" placeholder="คำใบ้...">
+    </div>
+    <div class="num-select" id="num-select"></div>
+    <button class="send-btn" id="send-clue-btn" onclick="sendClue()" disabled>📤 ส่งคำใบ้</button>
+  </div>
 </div>
 
 <!-- BOARD -->
@@ -441,14 +451,33 @@ function renderBoard(state) {
   });
 }
 
+let cluePanelOpen = false;
+
+window.toggleCluePanel = function() {
+  cluePanelOpen = !cluePanelOpen;
+  document.getElementById('clue-panel').classList.toggle('hidden', !cluePanelOpen);
+  document.getElementById('toggle-clue-btn').classList.toggle('active', cluePanelOpen);
+  document.getElementById('toggle-label').textContent = cluePanelOpen ? 'ซ่อน' : 'ให้คำใบ้';
+  if (cluePanelOpen) document.getElementById('clue-word-input').focus();
+}
+
 function renderUI(state) {
   document.getElementById('ss-red').textContent = state.score.red;
   document.getElementById('ss-blue').textContent = state.score.blue;
   document.getElementById('ss-turn').textContent = state.currentTurn?.toUpperCase() || '—';
 
   const isMyTurn = state.currentTurn === myTeam;
-  document.getElementById('clue-section').style.opacity = isMyTurn ? '1' : '0.4';
   document.getElementById('not-turn-banner').classList.toggle('hidden', isMyTurn || state.gameState === 'ended');
+
+  // Toggle btn enabled only on my turn
+  const toggleBtn = document.getElementById('toggle-clue-btn');
+  toggleBtn.disabled = !isMyTurn || state.gameState === 'ended';
+  if (!isMyTurn && cluePanelOpen) {
+    cluePanelOpen = false;
+    document.getElementById('clue-panel').classList.add('hidden');
+    toggleBtn.classList.remove('active');
+    document.getElementById('toggle-label').textContent = 'ให้คำใบ้';
+  }
 
   // Current clue
   const ccEl = document.getElementById('current-clue-display');
