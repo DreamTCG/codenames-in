@@ -259,6 +259,125 @@
   }
   .btn-row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
 
+  /* INFO MODAL */
+  .info-btn {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 18px;
+    letter-spacing: 1px;
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    background: transparent;
+    color: var(--text-dim);
+    transition: color 0.2s, border-color 0.2s;
+    line-height: 1;
+  }
+  .info-btn:hover { color: var(--gold); border-color: var(--gold); }
+
+  .info-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 300;
+    padding: 16px;
+  }
+  .info-overlay.hidden { display: none; }
+
+  .info-modal {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 12px;
+    max-width: 680px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 28px 32px;
+    position: relative;
+    scrollbar-width: thin;
+    scrollbar-color: #333 transparent;
+  }
+  .info-modal::-webkit-scrollbar { width: 6px; }
+  .info-modal::-webkit-scrollbar-track { background: transparent; }
+  .info-modal::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+  .info-close {
+    position: absolute;
+    top: 16px; right: 20px;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 22px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: color 0.2s, background 0.2s;
+  }
+  .info-close:hover { color: var(--text); background: #2a2a2a; }
+
+  .info-modal h1 {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 32px;
+    letter-spacing: 6px;
+    color: var(--gold);
+    margin-bottom: 4px;
+  }
+  .info-modal .info-tagline {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 24px;
+    letter-spacing: 1px;
+  }
+  .info-modal h2 {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 20px;
+    letter-spacing: 3px;
+    color: var(--text);
+    margin: 20px 0 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #2a2a2a;
+  }
+  .info-modal h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--gold);
+    margin: 14px 0 6px;
+    letter-spacing: 0.5px;
+  }
+  .info-modal p {
+    font-size: 14px;
+    line-height: 1.7;
+    color: #ccc;
+    margin-bottom: 8px;
+  }
+  .info-modal ul {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 8px;
+  }
+  .info-modal ul li {
+    font-size: 14px;
+    line-height: 1.7;
+    color: #ccc;
+    padding: 3px 0 3px 18px;
+    position: relative;
+  }
+  .info-modal ul li::before {
+    content: '•';
+    position: absolute;
+    left: 4px;
+    color: var(--text-dim);
+  }
+  .info-modal ul li b { color: var(--text); }
+  .tag-red { color: #e74c3c; font-weight: 700; }
+  .tag-blue { color: #2980b9; font-weight: 700; }
+  .tag-gold { color: var(--gold); font-weight: 700; }
+  .tag-dark { color: #888; font-weight: 700; }
+  .info-divider { border: none; border-top: 1px solid #222; margin: 6px 0 14px; }
+
   /* STATUS BAR */
   .statusbar {
     display: flex;
@@ -308,6 +427,7 @@
   <div class="logo">CODENAMES</div>
   <div class="room-info">
     <div class="room-code">ROOM: <span id="header-room">----</span></div>
+    <button class="info-btn" onclick="showInfo()" title="กติกาการเล่น">ℹ</button>
     <button class="btn btn-outline" style="font-size:13px;padding:6px 18px;letter-spacing:1px;" onclick="showSetup()">QR</button>
     <button class="btn btn-outline" id="end-turn-btn" style="font-size:13px;padding:6px 18px;letter-spacing:1px;" onclick="endTurn()">⏩ จบตา</button>
     <button class="btn" style="font-size:13px;padding:6px 18px;letter-spacing:1px;" onclick="confirmNewGame()">NEW GAME</button>
@@ -354,7 +474,71 @@
   </div>
 </div>
 
+<!-- INFO MODAL -->
+<div class="info-overlay hidden" id="info-overlay" onclick="handleInfoOverlayClick(event)">
+  <div class="info-modal" id="info-modal">
+    <button class="info-close" onclick="closeInfo()">✕</button>
+    <h1>CODENAMES</h1>
+    <div class="info-tagline">กติกาการเล่นฉบับภาษาไทย</div>
+
+    <h2>1. การตั้งค่าเกม</h2>
+    <ul>
+      <li><b>แบ่งทีม:</b> แบ่งผู้เล่นออกเป็นสองทีมที่มีขนาดใกล้เคียงกัน (มาตรฐานคือมีผู้เล่นอย่างน้อย 4 คน)</li>
+      <li><b>เลือก Spymaster:</b> แต่ละทีมเลือก <b>Spymaster</b> 1 คน Spymaster ทั้งสองนั่งด้านเดียวกัน ส่วนเพื่อนร่วมทีม (<b>Operatives</b>) นั่งตรงข้าม</li>
+      <li><b>กระดาน:</b> สับการ์ดชื่อรหัสและวางออก 25 ใบ ในตาราง 5×5</li>
+      <li><b>Key Card:</b> Spymaster จั่ว Key Card แล้ววางในชั้นระหว่างกัน การ์ดนี้เป็นแผนที่กระดานที่มีแค่ Spymaster มองเห็น ซึ่งแสดง:
+        <ul style="margin-top:4px;">
+          <li><span class="tag-red">ช่องแดง</span> / <span class="tag-blue">ช่องน้ำเงิน</span> — Agent ของแต่ละทีม</li>
+          <li><span class="tag-dark">ช่องสีเนื้อ</span> — บุคคลบริสุทธิ์ (Bystander)</li>
+          <li><b>ช่องดำ</b> — Assassin</li>
+        </ul>
+      </li>
+      <li><b>ทีมเริ่มต้น:</b> ไฟที่ขอบ Key Card บ่งบอกว่าทีมใดไปก่อน ทีมที่เริ่มก่อนต้องหา <span class="tag-gold">9 คำ</span> ส่วนทีมที่สองต้องหา <span class="tag-gold">8 คำ</span></li>
+    </ul>
+
+    <h2>2. วิธีการเล่น</h2>
+    <p>ทีมผลัดกันเล่น โดยเริ่มจากสีที่ระบุใน Key Card</p>
+
+    <h3>ตาของ Spymaster</h3>
+    <p>Spymaster ให้คำใบ้ที่ประกอบด้วย <b>1 คำ</b> และ <b>1 ตัวเลข</b> เช่น "สัตว์, 2"</p>
+    <ul>
+      <li><b>คำ</b> — ต้องเกี่ยวข้องกับความหมายของชื่อรหัสบนกระดาน</li>
+      <li><b>ตัวเลข</b> — บอก Operative ว่ามีกี่คำในตารางที่เกี่ยวข้องกับคำใบ้นั้น</li>
+      <li><b>กฎเข้มงวด:</b> Spymaster ต้องรักษาหน้า "poker face" และห้ามให้ใบ้เพิ่มเติมหรือใช้คำที่ปรากฏอยู่บนกระดาน</li>
+    </ul>
+
+    <h3>ตาของ Operatives</h3>
+    <p>Operative พูดคุยกันแล้วพยายามเดาคำของทีมโดยแตะการ์ด</p>
+    <ul>
+      <li><b>เดาถูก ✅</b> — Spymaster ปิดคำด้วยสีของทีม ทีมสามารถเดาต่อหรือเลือกหยุดก็ได้</li>
+      <li><b>Bystander 🟤</b> — ตาจบทันที และวางกระเบื้องกลางบนคำนั้น</li>
+      <li><b>Agent ฝ่ายตรงข้าม 🔄</b> — ตาจบ และคุณกลับช่วยทีมอื่นโดยปิดคำของพวกเขา</li>
+      <li><b>Assassin 💀</b> — ถ้าแตะช่องดำ ทีมของคุณ <b>แพ้ทันที</b></li>
+    </ul>
+
+    <hr class="info-divider">
+    <p style="font-size:13px;color:#888;"><b>หมายเหตุ:</b> Operative สามารถเดาได้มากกว่าตัวเลขที่ Spymaster ให้ <b>1 ครั้งเสมอ</b> เพื่อพยายามตามทันคำใบ้ที่พลาดไปก่อนหน้า (เช่น "สัตว์, 2" เดาได้สูงสุด 3 ครั้ง)</p>
+
+    <h2>3. การชนะเกม</h2>
+    <p>ทีมที่ชนะคือทีมแรกที่<b>ปิด Agent ทั้งหมด</b>ของตนบนกระดาน หรือชนะทันทีถ้าทีมตรงข้ามเดาโดน <b>Assassin</b> โดยไม่ตั้งใจ</p>
+  </div>
+</div>
+
 <!-- Firebase -->
+<script>
+function showInfo() {
+  document.getElementById('info-overlay').classList.remove('hidden');
+}
+function closeInfo() {
+  document.getElementById('info-overlay').classList.add('hidden');
+}
+function handleInfoOverlayClick(e) {
+  if (e.target === document.getElementById('info-overlay')) closeInfo();
+}
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeInfo();
+});
+</script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, set, get, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
