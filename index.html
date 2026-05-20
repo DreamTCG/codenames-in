@@ -89,25 +89,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0 24px;
+    padding: 0 32px;
     flex-direction: column;
     gap: 2px;
-    min-width: 160px;
   }
-  .end-turn-main {
-    font-family: 'Bebas Neue', cursive;
-    font-size: 12px;
-    letter-spacing: 2px;
-    padding: 4px 12px;
-    border: 1px solid #555;
-    border-radius: 4px;
-    background: transparent;
-    color: #aaa;
-    cursor: pointer;
-    transition: all 0.15s;
-    margin-top: 2px;
-  }
-  .end-turn-main:hover { border-color: #aaa; color: white; }
   .turn-label { font-size: 10px; letter-spacing: 3px; color: var(--text-dim); text-transform: uppercase; }
   .turn-value { font-family: 'Bebas Neue', cursive; font-size: 20px; letter-spacing: 2px; }
 
@@ -303,7 +288,7 @@
 <body>
 
 <!-- SETUP SCREEN -->
-<div id="setup-screen" class="hidden">
+<div id="setup-screen">
   <div class="setup-title">CODENAMES</div>
   <div class="setup-sub">BOARD DISPLAY — จอใหญ่</div>
   <div id="room-display" class="setup-room">----</div>
@@ -313,7 +298,7 @@
   </div>
   <div class="setup-sub">ให้ Spymaster scan QR หรือเปิด URL บนมือถือ</div>
   <div class="btn-row">
-    <button class="btn" id="start-btn" onclick="startGame()">🎮 เริ่มเกมใหม่</button>
+    <button class="btn" onclick="startGame()">🎮 เริ่มเกม</button>
     <button class="btn btn-outline" onclick="newRoom()">🔄 Room ใหม่</button>
   </div>
 </div>
@@ -337,7 +322,6 @@
   <div class="turn-indicator">
     <div class="turn-label">TURN</div>
     <div class="turn-value" id="turn-display">—</div>
-    <button class="end-turn-main" id="end-turn-main" onclick="endTurnMain()" style="display:none">⏩ END TURN</button>
   </div>
   <div class="score-team blue" id="score-blue">
     <span>LEFT</span>
@@ -436,15 +420,9 @@ window.showSetup = function() {
 }
 
 window.startGame = function() {
-  const btn = document.getElementById('start-btn');
-  if (btn.textContent.includes('เข้าร่วม')) {
-    // Resume existing game
-    document.getElementById('setup-screen').classList.add('hidden');
-  } else {
-    // Start new game
-    document.getElementById('setup-screen').classList.add('hidden');
-    createNewGame();
-  }
+  document.getElementById('setup-screen').classList.add('hidden');
+  // Always create a new game when pressing เริ่มเกม
+  createNewGame();
 }
 
 window.confirmNewGame = function() {
@@ -455,16 +433,7 @@ window.confirmNewGame = function() {
   }
 }
 
-window.endTurnMain = function() {
-  if (!gameState || gameState.gameState !== 'playing') return;
-  const nextTurn = gameState.currentTurn === 'red' ? 'blue' : 'red';
-  update(ref(db), {
-    [`rooms/${roomId}/currentTurn`]: nextTurn,
-    [`rooms/${roomId}/clue`]: { word: '', number: 0 }
-  });
-}
-
-
+function shuffle(arr) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -574,12 +543,10 @@ function renderUI(state) {
     turnEl.textContent = 'ENDED';
     redScore.className = 'score-team red';
     blueScore.className = 'score-team blue';
-    document.getElementById('end-turn-main').style.display = 'none';
   } else {
     turnEl.textContent = state.currentTurn.toUpperCase();
     redScore.className = 'score-team ' + (state.currentTurn === 'red' ? 'active-red' : 'red');
     blueScore.className = 'score-team ' + (state.currentTurn === 'blue' ? 'active-blue' : 'blue');
-    document.getElementById('end-turn-main').style.display = 'block';
   }
 
   // Clue
@@ -659,19 +626,8 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('spymaster-url').textContent = spymasterURL;
   generateQR(spymasterURL);
 
-  // Always show setup screen on load so Spymaster can scan QR first
-  document.getElementById('setup-screen').classList.remove('hidden');
-
-  // Check if game exists to decide button label
-  get(ref(db, `rooms/${roomId}`)).then(snap => {
-    const startBtn = document.getElementById('start-btn');
-    if (snap.exists()) {
-      startBtn.textContent = '▶️ เข้าร่วมเกมที่มีอยู่';
-    } else {
-      startBtn.textContent = '🎮 เริ่มเกมใหม่';
-    }
-    listenRoom();
-  });
+  // Always show setup screen on load, but listen in background
+  listenRoom();
 });
 </script>
 </body>
