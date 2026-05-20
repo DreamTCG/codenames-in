@@ -313,7 +313,7 @@
   </div>
   <div class="setup-sub">ให้ Spymaster scan QR หรือเปิด URL บนมือถือ</div>
   <div class="btn-row">
-    <button class="btn" onclick="startGame()">🎮 เริ่มเกม</button>
+    <button class="btn" id="start-btn" onclick="startGame()">🎮 เริ่มเกมใหม่</button>
     <button class="btn btn-outline" onclick="newRoom()">🔄 Room ใหม่</button>
   </div>
 </div>
@@ -436,9 +436,15 @@ window.showSetup = function() {
 }
 
 window.startGame = function() {
-  document.getElementById('setup-screen').classList.add('hidden');
-  // Always create a new game when pressing เริ่มเกม
-  createNewGame();
+  const btn = document.getElementById('start-btn');
+  if (btn.textContent.includes('เข้าร่วม')) {
+    // Resume existing game
+    document.getElementById('setup-screen').classList.add('hidden');
+  } else {
+    // Start new game
+    document.getElementById('setup-screen').classList.add('hidden');
+    createNewGame();
+  }
 }
 
 window.confirmNewGame = function() {
@@ -653,14 +659,18 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('spymaster-url').textContent = spymasterURL;
   generateQR(spymasterURL);
 
-  // Listen first — if game already exists skip setup screen, else show it
+  // Always show setup screen on load so Spymaster can scan QR first
+  document.getElementById('setup-screen').classList.remove('hidden');
+
+  // Check if game exists to decide button label
   get(ref(db, `rooms/${roomId}`)).then(snap => {
+    const startBtn = document.getElementById('start-btn');
     if (snap.exists()) {
-      listenRoom();
+      startBtn.textContent = '▶️ เข้าร่วมเกมที่มีอยู่';
     } else {
-      document.getElementById('setup-screen').classList.remove('hidden');
-      listenRoom();
+      startBtn.textContent = '🎮 เริ่มเกมใหม่';
     }
+    listenRoom();
   });
 });
 </script>
