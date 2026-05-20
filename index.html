@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Codenames — Board Display</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red: #c0392b;
+    --red-light: #e74c3c;
+    --blue: #1a5276;
+    --blue-light: #2980b9;
+    --neutral: #7f8c8d;
+    --neutral-light: #95a5a6;
+    --assassin: #1a1a1a;
+    --gold: #f39c12;
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --border: #2a2a2a;
+    --text: #e8e8e8;
+    --text-dim: #888;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Sarabun', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* HEADER */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 24px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .logo {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 28px;
+    letter-spacing: 4px;
+    color: var(--gold);
+  }
+  .room-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .room-code {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 22px;
+    letter-spacing: 6px;
+    color: var(--text-dim);
+  }
+  .room-code span { color: var(--gold); }
+
+  /* SCORE BAR */
+  .scorebar {
+    display: flex;
+    align-items: stretch;
+    height: 56px;
+    flex-shrink: 0;
+  }
+  .score-team {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    font-family: 'Bebas Neue', cursive;
+    font-size: 26px;
+    letter-spacing: 3px;
+    transition: background 0.3s;
+  }
+  .score-team.red { background: var(--red); }
+  .score-team.blue { background: var(--blue); }
+  .score-team.active-red { background: var(--red-light); }
+  .score-team.active-blue { background: var(--blue-light); }
+  .score-count { font-size: 36px; }
+  .turn-indicator {
+    background: #111;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 32px;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .turn-label { font-size: 10px; letter-spacing: 3px; color: var(--text-dim); text-transform: uppercase; }
+  .turn-value { font-family: 'Bebas Neue', cursive; font-size: 20px; letter-spacing: 2px; }
+
+  /* CLUE BAR */
+  .cluebar {
+    background: #111;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 8px 24px;
+    min-height: 44px;
+    flex-shrink: 0;
+  }
+  .clue-label { font-size: 11px; letter-spacing: 3px; color: var(--text-dim); text-transform: uppercase; }
+  .clue-word {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 28px;
+    letter-spacing: 4px;
+    color: var(--gold);
+  }
+  .clue-num {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 28px;
+    color: var(--text);
+    background: var(--border);
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+  }
+  .clue-empty { color: var(--text-dim); font-size: 13px; font-style: italic; }
+
+  /* BOARD */
+  .board-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 16px;
+    overflow: hidden;
+  }
+  .board {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    width: 100%;
+    max-width: min(95vw, calc((95vh - 200px) * 5/3));
+  }
+  .card {
+    aspect-ratio: 5/3;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    transition: transform 0.15s, box-shadow 0.15s;
+    user-select: none;
+  }
+  .card:hover:not(.revealed) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    border-color: #444;
+  }
+  .card-word {
+    font-family: 'Bebas Neue', cursive;
+    font-size: clamp(14px, 2.2vw, 28px);
+    letter-spacing: 2px;
+    text-align: center;
+    padding: 8px;
+    color: var(--text);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+    z-index: 1;
+  }
+  /* Revealed states */
+  .card.revealed { cursor: default; }
+  .card.revealed.red { background: var(--red); border-color: var(--red); }
+  .card.revealed.blue { background: var(--blue); border-color: var(--blue); }
+  .card.revealed.neutral { background: #3d3d3d; border-color: #555; }
+  .card.revealed.assassin { background: var(--assassin); border-color: #333; }
+  .card.revealed.assassin .card-word { color: #555; }
+  .card.revealed .card-word { opacity: 0.85; }
+
+  /* OVERLAY */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.92);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 24px; z-index: 100;
+  }
+  .overlay.hidden { display: none; }
+  .overlay-title {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 72px;
+    letter-spacing: 8px;
+  }
+  .overlay-sub { font-size: 18px; color: var(--text-dim); }
+  .btn {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 20px;
+    letter-spacing: 3px;
+    padding: 14px 48px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    background: var(--gold);
+    color: #000;
+    transition: opacity 0.2s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn-outline {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  /* SETUP SCREEN */
+  #setup-screen {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 24px; z-index: 200;
+  }
+  #setup-screen.hidden { display: none; }
+  .setup-title {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 64px;
+    letter-spacing: 10px;
+    color: var(--gold);
+  }
+  .setup-sub { color: var(--text-dim); font-size: 14px; letter-spacing: 2px; }
+  .setup-room {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 80px;
+    letter-spacing: 16px;
+    color: var(--text);
+    background: var(--surface);
+    padding: 16px 40px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .setup-url {
+    font-size: 13px;
+    color: var(--text-dim);
+    background: var(--surface);
+    padding: 10px 20px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    font-family: monospace;
+  }
+  .qr-wrap {
+    background: white;
+    padding: 12px;
+    border-radius: 8px;
+  }
+  .btn-row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+
+  /* STATUS BAR */
+  .statusbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 20px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+    font-size: 12px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+  }
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #27ae60;
+    display: inline-block;
+    margin-right: 6px;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; } 50% { opacity: 0.4; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SETUP SCREEN -->
+<div id="setup-screen">
+  <div class="setup-title">CODENAMES</div>
+  <div class="setup-sub">BOARD DISPLAY — จอใหญ่</div>
+  <div id="room-display" class="setup-room">----</div>
+  <div id="spymaster-url" class="setup-url">กำลังสร้าง Room...</div>
+  <div class="qr-wrap">
+    <canvas id="qr-canvas"></canvas>
+  </div>
+  <div class="setup-sub">ให้ Spymaster scan QR หรือเปิด URL บนมือถือ</div>
+  <div class="btn-row">
+    <button class="btn" onclick="startGame()">🎮 เริ่มเกม</button>
+    <button class="btn btn-outline" onclick="newRoom()">🔄 Room ใหม่</button>
+  </div>
+</div>
+
+<!-- MAIN UI -->
+<header>
+  <div class="logo">CODENAMES</div>
+  <div class="room-info">
+    <div class="room-code">ROOM: <span id="header-room">----</span></div>
+    <button class="btn btn-outline" style="font-size:13px;padding:6px 18px;letter-spacing:1px;" onclick="showSetup()">QR</button>
+    <button class="btn" style="font-size:13px;padding:6px 18px;letter-spacing:1px;" onclick="confirmNewGame()">NEW GAME</button>
+  </div>
+</header>
+
+<div class="scorebar">
+  <div class="score-team red" id="score-red">
+    <span>🔴 RED</span>
+    <span class="score-count" id="count-red">0</span>
+    <span>LEFT</span>
+  </div>
+  <div class="turn-indicator">
+    <div class="turn-label">TURN</div>
+    <div class="turn-value" id="turn-display">—</div>
+  </div>
+  <div class="score-team blue" id="score-blue">
+    <span>LEFT</span>
+    <span class="score-count" id="count-blue">0</span>
+    <span>BLUE 🔵</span>
+  </div>
+</div>
+
+<div class="cluebar">
+  <div id="clue-display" class="clue-empty">รอ Spymaster ให้คำใบ้...</div>
+</div>
+
+<div class="board-wrap">
+  <div class="board" id="board"></div>
+</div>
+
+<div class="statusbar">
+  <div><span class="status-dot"></span>CONNECTED TO FIREBASE</div>
+  <div id="status-msg">กำลังโหลด...</div>
+  <div id="status-time">—</div>
+</div>
+
+<!-- WIN OVERLAY -->
+<div class="overlay hidden" id="win-overlay">
+  <div class="overlay-title" id="win-title">—</div>
+  <div class="overlay-sub" id="win-sub">—</div>
+  <div class="btn-row">
+    <button class="btn" onclick="confirmNewGame()">🎮 เล่นใหม่</button>
+  </div>
+</div>
+
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, get, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDDImomngpU2PIY4Su75Drb2u-xGhSoK5M",
+  authDomain: "codenames-interactive.firebaseapp.com",
+  databaseURL: "https://codenames-interactive-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "codenames-interactive",
+  storageBucket: "codenames-interactive.firebasestorage.app",
+  messagingSenderId: "827026535183",
+  appId: "1:827026535183:web:cb17324409f02a3667447a"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// Word bank (Thai + English mix)
+const WORDS = [
+  "ดาว","จันทร์","ไฟ","น้ำ","ลม","ดิน","ทอง","เงิน","เพชร","มังกร",
+  "เสือ","ช้าง","นกอินทรี","หมาป่า","ปลาฉลาม","ฟ้า","ทะเล","ป่า","ภูเขา","ทะเลทราย",
+  "กษัตริย์","ราชินี","นักรบ","นักมายากล","นักสืบ","ปราสาท","ดาบ","โล่","ธนู","หอก",
+  "รถถัง","จรวด","ระเบิด","เรือดำน้ำ","เฮลิคอปเตอร์","หุ่นยนต์","คอมพิวเตอร์","โทรศัพท์","กล้อง","นาฬิกา",
+  "แพทย์","ตำรวจ","นักบิน","วิศวกร","ครู","พ่อครัว","นักดนตรี","นักกีฬา","ผู้กำกับ","นักวิทยาศาสตร์",
+  "SPACE","SHADOW","GHOST","STORM","FLASH","VIPER","COBRA","FALCON","EAGLE","WOLF",
+  "ROCKET","BULLET","THUNDER","LIGHTNING","TORNADO","FREEZE","BLAZE","NOVA","TITAN","APEX",
+  "MIRROR","CLOCK","BRIDGE","TOWER","VAULT","GATE","KEY","LOCK","CODE","MAP",
+  "CROWN","THRONE","BLADE","SHIELD","ARROW","LANCE","HAMMER","AXE","BOMB","MINE",
+  "BANK","MARKET","STATION","HARBOR","AIRPORT","FACTORY","SCHOOL","HOSPITAL","TEMPLE","PALACE",
+  "ข้าว","น้ำมัน","ทุเรียน","มังคุด","มะพร้าว","กาแฟ","ชา","ช็อกโกแลต","ไอศกรีม","พิซซ่า",
+  "กีตาร์","เปียโน","กลอง","ไวโอลิน","แตร","ขลุ่ย","เพลง","จังหวะ","โน้ต","คอนเสิร์ต",
+  "ฟุตบอล","บาสเกตบอล","เทนนิส","มวย","ว่ายน้ำ","วิ่ง","ยิมนาสติก","กอล์ฟ","แบดมินตัน","เบสบอล",
+  "DIAMOND","CRYSTAL","RUBY","EMERALD","SAPPHIRE","PEARL","ONYX","TOPAZ","OPAL","JADE"
+];
+
+let roomId = null;
+let gameState = null;
+let unsubscribe = null;
+
+function getRoomFromURL() {
+  return new URLSearchParams(window.location.search).get('room');
+}
+
+function generateRoomId() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({length: 4}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
+window.newRoom = function() {
+  const id = generateRoomId();
+  const url = new URL(window.location.href);
+  url.searchParams.set('room', id);
+  window.history.replaceState({}, '', url);
+  roomId = id;
+  document.getElementById('room-display').textContent = id;
+  document.getElementById('header-room').textContent = id;
+  const spymasterURL = `${window.location.origin}${window.location.pathname.replace('index.html','').replace(/\/$/, '')}/spymaster.html?room=${id}`;
+  document.getElementById('spymaster-url').textContent = spymasterURL;
+  generateQR(spymasterURL);
+}
+
+window.showSetup = function() {
+  document.getElementById('setup-screen').classList.remove('hidden');
+}
+
+window.startGame = function() {
+  document.getElementById('setup-screen').classList.add('hidden');
+  if (!gameState) createNewGame();
+}
+
+window.confirmNewGame = function() {
+  if (confirm('สร้างเกมใหม่? การ์ดทั้งหมดจะถูกรีเซ็ต')) {
+    createNewGame();
+    document.getElementById('win-overlay').classList.add('hidden');
+    document.getElementById('setup-screen').classList.add('hidden');
+  }
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function createNewGame() {
+  const words = shuffle(WORDS).slice(0, 25);
+  const startTeam = Math.random() < 0.5 ? 'red' : 'blue';
+  const roles = [];
+  const redCount = startTeam === 'red' ? 9 : 8;
+  const blueCount = startTeam === 'blue' ? 9 : 8;
+  for (let i = 0; i < redCount; i++) roles.push('red');
+  for (let i = 0; i < blueCount; i++) roles.push('blue');
+  for (let i = 0; i < 7; i++) roles.push('neutral');
+  roles.push('assassin');
+  const shuffledRoles = shuffle(roles);
+
+  const cards = words.map((word, i) => ({
+    word,
+    role: shuffledRoles[i],
+    revealed: false
+  }));
+
+  const newState = {
+    gameState: 'playing',
+    currentTurn: startTeam,
+    startingTeam: startTeam,
+    winner: null,
+    cards,
+    clue: { word: '', number: 0 },
+    score: {
+      red: redCount,
+      blue: blueCount
+    }
+  };
+
+  set(ref(db, `rooms/${roomId}`), newState);
+}
+
+function revealCard(index) {
+  if (!gameState || gameState.gameState !== 'playing') return;
+  if (gameState.cards[index].revealed) return;
+  if (gameState.winner) return;
+
+  const card = gameState.cards[index];
+  const updates = {};
+  updates[`rooms/${roomId}/cards/${index}/revealed`] = true;
+
+  // Check win conditions after reveal
+  const newCards = [...gameState.cards];
+  newCards[index] = { ...card, revealed: true };
+
+  if (card.role === 'assassin') {
+    const loser = gameState.currentTurn;
+    const winner = loser === 'red' ? 'blue' : 'red';
+    updates[`rooms/${roomId}/winner`] = winner;
+    updates[`rooms/${roomId}/gameState`] = 'ended';
+    updates[`rooms/${roomId}/winReason`] = 'assassin';
+  } else {
+    const redLeft = newCards.filter(c => c.role === 'red' && !c.revealed).length;
+    const blueLeft = newCards.filter(c => c.role === 'blue' && !c.revealed).length;
+    updates[`rooms/${roomId}/score/red`] = redLeft;
+    updates[`rooms/${roomId}/score/blue`] = blueLeft;
+
+    if (redLeft === 0) {
+      updates[`rooms/${roomId}/winner`] = 'red';
+      updates[`rooms/${roomId}/gameState`] = 'ended';
+    } else if (blueLeft === 0) {
+      updates[`rooms/${roomId}/winner`] = 'blue';
+      updates[`rooms/${roomId}/gameState`] = 'ended';
+    } else if (card.role !== gameState.currentTurn) {
+      // Wrong card — switch turn
+      const nextTurn = gameState.currentTurn === 'red' ? 'blue' : 'red';
+      updates[`rooms/${roomId}/currentTurn`] = nextTurn;
+      updates[`rooms/${roomId}/clue`] = { word: '', number: 0 };
+    }
+  }
+
+  update(ref(db), updates);
+}
+
+function renderBoard(state) {
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+  state.cards.forEach((card, i) => {
+    const el = document.createElement('div');
+    el.className = 'card' + (card.revealed ? ` revealed ${card.role}` : '');
+    el.innerHTML = `<div class="card-word">${card.word}</div>`;
+    if (!card.revealed) el.onclick = () => revealCard(i);
+    board.appendChild(el);
+  });
+}
+
+function renderUI(state) {
+  // Score
+  document.getElementById('count-red').textContent = state.score.red;
+  document.getElementById('count-blue').textContent = state.score.blue;
+
+  // Turn
+  const turnEl = document.getElementById('turn-display');
+  const redScore = document.getElementById('score-red');
+  const blueScore = document.getElementById('score-blue');
+  if (state.winner) {
+    turnEl.textContent = 'ENDED';
+    redScore.className = 'score-team red';
+    blueScore.className = 'score-team blue';
+  } else {
+    turnEl.textContent = state.currentTurn.toUpperCase();
+    redScore.className = 'score-team ' + (state.currentTurn === 'red' ? 'active-red' : 'red');
+    blueScore.className = 'score-team ' + (state.currentTurn === 'blue' ? 'active-blue' : 'blue');
+  }
+
+  // Clue
+  const clueEl = document.getElementById('clue-display');
+  if (state.clue && state.clue.word) {
+    clueEl.className = '';
+    clueEl.innerHTML = `
+      <span class="clue-label">CLUE</span>
+      <span class="clue-word">${state.clue.word.toUpperCase()}</span>
+      <span class="clue-num">${state.clue.number}</span>
+    `;
+  } else {
+    clueEl.className = 'clue-empty';
+    clueEl.textContent = 'รอ Spymaster ให้คำใบ้...';
+  }
+
+  // Win overlay
+  if (state.winner) {
+    const colors = { red: '#c0392b', blue: '#2980b9' };
+    document.getElementById('win-title').style.color = colors[state.winner];
+    document.getElementById('win-title').textContent = `${state.winner.toUpperCase()} WINS!`;
+    document.getElementById('win-sub').textContent =
+      state.winReason === 'assassin' ? '💀 โดน Assassin!' : '🎉 เปิดการ์ดครบทุกใบ!';
+    document.getElementById('win-overlay').classList.remove('hidden');
+  }
+
+  // Status
+  document.getElementById('status-msg').textContent = state.gameState === 'playing' ? 'Game in progress' : 'Game ended';
+  document.getElementById('status-time').textContent = new Date().toLocaleTimeString('th-TH');
+}
+
+function listenRoom() {
+  if (unsubscribe) unsubscribe();
+  const roomRef = ref(db, `rooms/${roomId}`);
+  unsubscribe = onValue(roomRef, (snap) => {
+    if (snap.exists()) {
+      gameState = snap.val();
+      renderBoard(gameState);
+      renderUI(gameState);
+    }
+  });
+}
+
+// QR Code generator (simple)
+function generateQR(text) {
+  const canvas = document.getElementById('qr-canvas');
+  // Use QR API
+  const img = new Image();
+  img.onload = () => {
+    const ctx = canvas.getContext('2d');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    ctx.drawImage(img, 0, 0);
+  };
+  img.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(text)}`;
+  canvas.style.width = '160px';
+  canvas.style.height = '160px';
+}
+
+// INIT
+window.addEventListener('DOMContentLoaded', () => {
+  const urlRoom = getRoomFromURL();
+  if (urlRoom) {
+    roomId = urlRoom;
+    document.getElementById('room-display').textContent = roomId;
+    document.getElementById('header-room').textContent = roomId;
+    const spymasterURL = `${window.location.origin}${window.location.pathname.replace('index.html','').replace(/\/$/, '')}/spymaster.html?room=${roomId}`;
+    document.getElementById('spymaster-url').textContent = spymasterURL;
+    generateQR(spymasterURL);
+    listenRoom();
+  } else {
+    window.newRoom();
+  }
+});
+</script>
+</body>
+</html>
