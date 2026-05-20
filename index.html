@@ -89,10 +89,25 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0 32px;
+    padding: 0 24px;
     flex-direction: column;
     gap: 2px;
+    min-width: 160px;
   }
+  .end-turn-main {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 12px;
+    letter-spacing: 2px;
+    padding: 4px 12px;
+    border: 1px solid #555;
+    border-radius: 4px;
+    background: transparent;
+    color: #aaa;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-top: 2px;
+  }
+  .end-turn-main:hover { border-color: #aaa; color: white; }
   .turn-label { font-size: 10px; letter-spacing: 3px; color: var(--text-dim); text-transform: uppercase; }
   .turn-value { font-family: 'Bebas Neue', cursive; font-size: 20px; letter-spacing: 2px; }
 
@@ -288,7 +303,7 @@
 <body>
 
 <!-- SETUP SCREEN -->
-<div id="setup-screen">
+<div id="setup-screen" class="hidden">
   <div class="setup-title">CODENAMES</div>
   <div class="setup-sub">BOARD DISPLAY — จอใหญ่</div>
   <div id="room-display" class="setup-room">----</div>
@@ -322,6 +337,7 @@
   <div class="turn-indicator">
     <div class="turn-label">TURN</div>
     <div class="turn-value" id="turn-display">—</div>
+    <button class="end-turn-main" id="end-turn-main" onclick="endTurnMain()" style="display:none">⏩ END TURN</button>
   </div>
   <div class="score-team blue" id="score-blue">
     <span>LEFT</span>
@@ -433,7 +449,16 @@ window.confirmNewGame = function() {
   }
 }
 
-function shuffle(arr) {
+window.endTurnMain = function() {
+  if (!gameState || gameState.gameState !== 'playing') return;
+  const nextTurn = gameState.currentTurn === 'red' ? 'blue' : 'red';
+  update(ref(db), {
+    [`rooms/${roomId}/currentTurn`]: nextTurn,
+    [`rooms/${roomId}/clue`]: { word: '', number: 0 }
+  });
+}
+
+
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -543,10 +568,12 @@ function renderUI(state) {
     turnEl.textContent = 'ENDED';
     redScore.className = 'score-team red';
     blueScore.className = 'score-team blue';
+    document.getElementById('end-turn-main').style.display = 'none';
   } else {
     turnEl.textContent = state.currentTurn.toUpperCase();
     redScore.className = 'score-team ' + (state.currentTurn === 'red' ? 'active-red' : 'red');
     blueScore.className = 'score-team ' + (state.currentTurn === 'blue' ? 'active-blue' : 'blue');
+    document.getElementById('end-turn-main').style.display = 'block';
   }
 
   // Clue
@@ -626,8 +653,15 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('spymaster-url').textContent = spymasterURL;
   generateQR(spymasterURL);
 
-  // Always show setup screen on load, but listen in background
-  listenRoom();
+  // Listen first — if game already exists skip setup screen, else show it
+  get(ref(db, `rooms/${roomId}`)).then(snap => {
+    if (snap.exists()) {
+      listenRoom();
+    } else {
+      document.getElementById('setup-screen').classList.remove('hidden');
+      listenRoom();
+    }
+  });
 });
 </script>
 </body>
