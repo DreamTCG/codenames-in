@@ -309,6 +309,7 @@
   <div class="room-info">
     <div class="room-code">ROOM: <span id="header-room">----</span></div>
     <button class="btn btn-outline" style="font-size:13px;padding:6px 18px;letter-spacing:1px;" onclick="showSetup()">QR</button>
+    <button class="btn btn-outline" id="end-turn-btn" style="font-size:13px;padding:6px 18px;letter-spacing:1px;" onclick="endTurn()">⏩ จบตา</button>
     <button class="btn" style="font-size:13px;padding:6px 18px;letter-spacing:1px;" onclick="confirmNewGame()">NEW GAME</button>
   </div>
 </header>
@@ -357,6 +358,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, set, get, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { WORDS } from "./words.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDDImomngpU2PIY4Su75Drb2u-xGhSoK5M",
@@ -370,24 +372,6 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-
-// Word bank (Thai + English mix)
-const WORDS = [
-  "ดาว","จันทร์","ไฟ","น้ำ","ลม","ดิน","ทอง","เงิน","เพชร","มังกร",
-  "เสือ","ช้าง","นกอินทรี","หมาป่า","ปลาฉลาม","ฟ้า","ทะเล","ป่า","ภูเขา","ทะเลทราย",
-  "กษัตริย์","ราชินี","นักรบ","นักมายากล","นักสืบ","ปราสาท","ดาบ","โล่","ธนู","หอก",
-  "รถถัง","จรวด","ระเบิด","เรือดำน้ำ","เฮลิคอปเตอร์","หุ่นยนต์","คอมพิวเตอร์","โทรศัพท์","กล้อง","นาฬิกา",
-  "แพทย์","ตำรวจ","นักบิน","วิศวกร","ครู","พ่อครัว","นักดนตรี","นักกีฬา","ผู้กำกับ","นักวิทยาศาสตร์",
-  "SPACE","SHADOW","GHOST","STORM","FLASH","VIPER","COBRA","FALCON","EAGLE","WOLF",
-  "ROCKET","BULLET","THUNDER","LIGHTNING","TORNADO","FREEZE","BLAZE","NOVA","TITAN","APEX",
-  "MIRROR","CLOCK","BRIDGE","TOWER","VAULT","GATE","KEY","LOCK","CODE","MAP",
-  "CROWN","THRONE","BLADE","SHIELD","ARROW","LANCE","HAMMER","AXE","BOMB","MINE",
-  "BANK","MARKET","STATION","HARBOR","AIRPORT","FACTORY","SCHOOL","HOSPITAL","TEMPLE","PALACE",
-  "ข้าว","น้ำมัน","ทุเรียน","มังคุด","มะพร้าว","กาแฟ","ชา","ช็อกโกแลต","ไอศกรีม","พิซซ่า",
-  "กีตาร์","เปียโน","กลอง","ไวโอลิน","แตร","ขลุ่ย","เพลง","จังหวะ","โน้ต","คอนเสิร์ต",
-  "ฟุตบอล","บาสเกตบอล","เทนนิส","มวย","ว่ายน้ำ","วิ่ง","ยิมนาสติก","กอล์ฟ","แบดมินตัน","เบสบอล",
-  "DIAMOND","CRYSTAL","RUBY","EMERALD","SAPPHIRE","PEARL","ONYX","TOPAZ","OPAL","JADE"
-];
 
 let roomId = null;
 let gameState = null;
@@ -423,6 +407,15 @@ window.startGame = function() {
   document.getElementById('setup-screen').classList.add('hidden');
   // Always create a new game when pressing เริ่มเกม
   createNewGame();
+}
+
+window.endTurn = function() {
+  if (!gameState || gameState.gameState !== 'playing') return;
+  const nextTurn = gameState.currentTurn === 'red' ? 'blue' : 'red';
+  update(ref(db), {
+    [`rooms/${roomId}/currentTurn`]: nextTurn,
+    [`rooms/${roomId}/clue`]: { word: '', number: 0 }
+  });
 }
 
 window.confirmNewGame = function() {
@@ -539,14 +532,21 @@ function renderUI(state) {
   const turnEl = document.getElementById('turn-display');
   const redScore = document.getElementById('score-red');
   const blueScore = document.getElementById('score-blue');
+  const endTurnBtn = document.getElementById('end-turn-btn');
   if (state.winner) {
     turnEl.textContent = 'ENDED';
     redScore.className = 'score-team red';
     blueScore.className = 'score-team blue';
+    endTurnBtn.disabled = true;
+    endTurnBtn.style.opacity = '0.4';
+    endTurnBtn.style.cursor = 'not-allowed';
   } else {
     turnEl.textContent = state.currentTurn.toUpperCase();
     redScore.className = 'score-team ' + (state.currentTurn === 'red' ? 'active-red' : 'red');
     blueScore.className = 'score-team ' + (state.currentTurn === 'blue' ? 'active-blue' : 'blue');
+    endTurnBtn.disabled = false;
+    endTurnBtn.style.opacity = '';
+    endTurnBtn.style.cursor = '';
   }
 
   // Clue
