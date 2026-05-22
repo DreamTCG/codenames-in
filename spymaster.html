@@ -618,21 +618,6 @@ function renderUI(state) {
   if (state.mode) applyTeamScreenMode(state.mode);
 }
 
-// Re-declared here so renderUI can call it without a circular dependency issue
-function applyTeamScreenMode(mode) {
-  if (mode === 'duet') {
-    document.getElementById('btn-red').classList.add('hidden');
-    document.getElementById('btn-blue').classList.add('hidden');
-    document.getElementById('btn-duet').classList.remove('hidden');
-    document.getElementById('ts-choose-label').textContent = 'Duet Mode';
-  } else {
-    document.getElementById('btn-red').classList.remove('hidden');
-    document.getElementById('btn-blue').classList.remove('hidden');
-    document.getElementById('btn-duet').classList.add('hidden');
-    document.getElementById('ts-choose-label').textContent = 'เลือกทีมของคุณ';
-  }
-}
-
 function listenRoom() {
   onValue(ref(db, `rooms/${roomId}`), (snap) => {
     if (snap.exists()) {
