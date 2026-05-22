@@ -15,6 +15,8 @@
     --neutral-light: #95a5a6;
     --assassin: #1a1a1a;
     --gold: #f39c12;
+    --green: #1e8449;
+    --green-light: #27ae60;
     --bg: #0d0d0d;
     --surface: #161616;
     --border: #2a2a2a;
@@ -96,6 +98,28 @@
   .turn-label { font-size: 10px; letter-spacing: 3px; color: var(--text-dim); text-transform: uppercase; }
   .turn-value { font-family: 'Bebas Neue', cursive; font-size: 20px; letter-spacing: 2px; }
 
+  /* DUET SCORE BAR */
+  .scorebar-duet {
+    display: flex;
+    align-items: stretch;
+    height: 56px;
+    flex-shrink: 0;
+  }
+  .duet-stat {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-family: 'Bebas Neue', cursive;
+    font-size: 20px;
+    letter-spacing: 2px;
+  }
+  .duet-stat.green-stat { background: var(--green); }
+  .duet-stat.turns-stat { background: #1a1a2e; border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+  .duet-stat.turn-stat { background: #111; }
+  .duet-count { font-size: 32px; }
+
   /* CLUE BAR */
   .cluebar {
     background: #111;
@@ -174,7 +198,7 @@
     text-shadow: 0 1px 3px rgba(0,0,0,0.8);
     z-index: 1;
   }
-  /* Revealed states */
+  /* Revealed states — classic */
   .card.revealed { cursor: default; }
   .card.revealed.red { background: var(--red); border-color: var(--red); }
   .card.revealed.blue { background: var(--blue); border-color: var(--blue); }
@@ -182,6 +206,9 @@
   .card.revealed.assassin { background: var(--assassin); border-color: #333; }
   .card.revealed.assassin .card-word { color: #555; }
   .card.revealed .card-word { opacity: 0.85; }
+  /* Revealed states — duet */
+  .card.revealed.green { background: var(--green); border-color: var(--green-light); }
+  .card.revealed.bystander { background: #3d3d3d; border-color: #555; }
 
   /* OVERLAY */
   .overlay {
@@ -223,7 +250,7 @@
     background: var(--bg);
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
-    gap: 24px; z-index: 200;
+    gap: 20px; z-index: 200;
   }
   #setup-screen.hidden { display: none; }
   .setup-title {
@@ -258,6 +285,30 @@
     border-radius: 8px;
   }
   .btn-row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+
+  /* MODE SELECTOR */
+  .mode-selector {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .mode-btn {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 16px;
+    letter-spacing: 2px;
+    padding: 10px 24px;
+    border-radius: 6px;
+    border: 2px solid var(--border);
+    background: var(--surface);
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .mode-btn:hover { border-color: var(--gold); color: var(--text); }
+  .mode-btn.selected { border-color: var(--gold); color: var(--gold); background: rgba(243,156,18,0.1); }
+  .mode-btn.selected-green { border-color: var(--green-light); color: var(--green-light); background: rgba(39,174,96,0.1); }
+  .mode-label { font-size: 11px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; margin-bottom: -8px; }
 
   /* INFO MODAL */
   .info-btn {
@@ -416,6 +467,13 @@
     <canvas id="qr-canvas"></canvas>
   </div>
   <div class="setup-sub">ให้ Spymaster scan QR หรือเปิด URL บนมือถือ</div>
+
+  <div class="mode-label">เลือกโหมดเกม</div>
+  <div class="mode-selector">
+    <button class="mode-btn selected" id="mode-classic" onclick="selectMode('classic')">🎯 Classic 4-Player</button>
+    <button class="mode-btn" id="mode-duet" onclick="selectMode('duet')">🤝 Duet 2-Player</button>
+  </div>
+
   <div class="btn-row">
     <button class="btn" onclick="startGame()">🎮 เริ่มเกม</button>
     <button class="btn btn-outline" onclick="newRoom()">🔄 Room ใหม่</button>
@@ -434,7 +492,8 @@
   </div>
 </header>
 
-<div class="scorebar">
+<!-- CLASSIC SCORE BAR -->
+<div class="scorebar" id="scorebar-classic">
   <div class="score-team red" id="score-red">
     <span>🔴 RED</span>
     <span class="score-count" id="count-red">0</span>
@@ -448,6 +507,25 @@
     <span>LEFT</span>
     <span class="score-count" id="count-blue">0</span>
     <span>BLUE 🔵</span>
+  </div>
+</div>
+
+<!-- DUET SCORE BAR -->
+<div class="scorebar-duet" id="scorebar-duet" style="display:none;">
+  <div class="duet-stat green-stat">
+    <span>🟢 GREEN FOUND</span>
+    <span class="duet-count" id="duet-green-found">0</span>
+    <span id="duet-green-total">/15</span>
+  </div>
+  <div class="duet-stat turns-stat">
+    <span>⏳ TURNS LEFT</span>
+    <span class="duet-count" id="duet-turns-left">9</span>
+  </div>
+  <div class="duet-stat turn-stat">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+      <div style="font-size:10px;letter-spacing:3px;color:var(--text-dim);">TURN</div>
+      <div id="duet-turn-display" style="font-size:20px;letter-spacing:2px;">—</div>
+    </div>
   </div>
 </div>
 
@@ -521,6 +599,15 @@
 
     <h2>3. การชนะเกม</h2>
     <p>ทีมที่ชนะคือทีมแรกที่<b>ปิด Agent ทั้งหมด</b>ของตนบนกระดาน หรือชนะทันทีถ้าทีมตรงข้ามเดาโดน <b>Assassin</b> โดยไม่ตั้งใจ</p>
+
+    <h2>Duet Mode (2 ผู้เล่น)</h2>
+    <p>ผู้เล่นสองคนร่วมมือกันแทนที่จะแข่งกัน กระดานมี <b>การ์ดเขียว 15 ใบ</b>, Assassin 3 ใบ, Bystander 7 ใบ</p>
+    <ul>
+      <li>ผลัดกันให้คำใบ้และเดา ภายใน <b>9 ตา</b></li>
+      <li>เปิดการ์ดเขียวครบ 15 ใบ = <b>ชนะร่วมกัน</b></li>
+      <li>โดน Assassin หรือหมด 9 ตา = <b>แพ้ร่วมกัน</b></li>
+      <li>เปิดการ์ดที่ไม่ใช่เขียว = จบตาและเดินตาถัดไป</li>
+    </ul>
   </div>
 </div>
 
@@ -560,6 +647,7 @@ const db = getDatabase(app);
 let roomId = null;
 let gameState = null;
 let unsubscribe = null;
+let selectedMode = 'classic';
 
 function getRoomFromURL() {
   return new URLSearchParams(window.location.search).get('room');
@@ -568,6 +656,12 @@ function getRoomFromURL() {
 function generateRoomId() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   return Array.from({length: 4}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
+window.selectMode = function(mode) {
+  selectedMode = mode;
+  document.getElementById('mode-classic').className = 'mode-btn' + (mode === 'classic' ? ' selected' : '');
+  document.getElementById('mode-duet').className = 'mode-btn' + (mode === 'duet' ? ' selected-green' : '');
 }
 
 window.newRoom = function() {
@@ -589,22 +683,38 @@ window.showSetup = function() {
 
 window.startGame = function() {
   document.getElementById('setup-screen').classList.add('hidden');
-  // Always create a new game when pressing เริ่มเกม
-  createNewGame();
+  createNewGame(selectedMode);
 }
 
 window.endTurn = function() {
   if (!gameState || gameState.gameState !== 'playing') return;
-  const nextTurn = gameState.currentTurn === 'red' ? 'blue' : 'red';
-  update(ref(db), {
-    [`rooms/${roomId}/currentTurn`]: nextTurn,
-    [`rooms/${roomId}/clue`]: { word: '', number: 0 }
-  });
+  const isDuet = gameState.mode === 'duet';
+  if (isDuet) {
+    const nextTurn = gameState.currentTurn === 'red' ? 'blue' : 'red';
+    const newTurnsLeft = (gameState.turnsLeft || 1) - 1;
+    const updates = {
+      [`rooms/${roomId}/currentTurn`]: nextTurn,
+      [`rooms/${roomId}/clue`]: { word: '', number: 0 },
+      [`rooms/${roomId}/turnsLeft`]: newTurnsLeft
+    };
+    if (newTurnsLeft <= 0) {
+      updates[`rooms/${roomId}/gameState`] = 'ended';
+      updates[`rooms/${roomId}/winner`] = 'none';
+      updates[`rooms/${roomId}/winReason`] = 'timeout';
+    }
+    update(ref(db), updates);
+  } else {
+    const nextTurn = gameState.currentTurn === 'red' ? 'blue' : 'red';
+    update(ref(db), {
+      [`rooms/${roomId}/currentTurn`]: nextTurn,
+      [`rooms/${roomId}/clue`]: { word: '', number: 0 }
+    });
+  }
 }
 
 window.confirmNewGame = function() {
   if (confirm('สร้างเกมใหม่? การ์ดทั้งหมดจะถูกรีเซ็ต')) {
-    createNewGame();
+    createNewGame(selectedMode);
     document.getElementById('win-overlay').classList.add('hidden');
     document.getElementById('setup-screen').classList.add('hidden');
   }
@@ -619,7 +729,15 @@ function shuffle(arr) {
   return a;
 }
 
-function createNewGame() {
+function createNewGame(mode) {
+  if (mode === 'duet') {
+    createDuetGame();
+  } else {
+    createClassicGame();
+  }
+}
+
+function createClassicGame() {
   const words = shuffle(WORDS).slice(0, 25);
   const startTeam = Math.random() < 0.5 ? 'red' : 'blue';
   const roles = [];
@@ -638,16 +756,46 @@ function createNewGame() {
   }));
 
   const newState = {
+    mode: 'classic',
     gameState: 'playing',
     currentTurn: startTeam,
     startingTeam: startTeam,
     winner: null,
+    winReason: null,
     cards,
     clue: { word: '', number: 0 },
-    score: {
-      red: redCount,
-      blue: blueCount
-    }
+    score: { red: redCount, blue: blueCount }
+  };
+
+  set(ref(db, `rooms/${roomId}`), newState);
+}
+
+function createDuetGame() {
+  const words = shuffle(WORDS).slice(0, 25);
+  const roles = [];
+  for (let i = 0; i < 15; i++) roles.push('green');
+  for (let i = 0; i < 3; i++) roles.push('assassin');
+  for (let i = 0; i < 7; i++) roles.push('bystander');
+  const shuffledRoles = shuffle(roles);
+
+  const cards = words.map((word, i) => ({
+    word,
+    role: shuffledRoles[i],
+    revealed: false
+  }));
+
+  const newState = {
+    mode: 'duet',
+    gameState: 'playing',
+    currentTurn: 'red',
+    startingTeam: 'red',
+    winner: null,
+    winReason: null,
+    cards,
+    clue: { word: '', number: 0 },
+    turnsLeft: 9,
+    greenFound: 0,
+    greenTotal: 15
   };
 
   set(ref(db, `rooms/${roomId}`), newState);
@@ -662,33 +810,59 @@ function revealCard(index) {
   const updates = {};
   updates[`rooms/${roomId}/cards/${index}/revealed`] = true;
 
-  // Check win conditions after reveal
   const newCards = [...gameState.cards];
   newCards[index] = { ...card, revealed: true };
 
-  if (card.role === 'assassin') {
-    const loser = gameState.currentTurn;
-    const winner = loser === 'red' ? 'blue' : 'red';
-    updates[`rooms/${roomId}/winner`] = winner;
-    updates[`rooms/${roomId}/gameState`] = 'ended';
-    updates[`rooms/${roomId}/winReason`] = 'assassin';
-  } else {
-    const redLeft = newCards.filter(c => c.role === 'red' && !c.revealed).length;
-    const blueLeft = newCards.filter(c => c.role === 'blue' && !c.revealed).length;
-    updates[`rooms/${roomId}/score/red`] = redLeft;
-    updates[`rooms/${roomId}/score/blue`] = blueLeft;
-
-    if (redLeft === 0) {
-      updates[`rooms/${roomId}/winner`] = 'red';
+  if (gameState.mode === 'duet') {
+    if (card.role === 'assassin') {
+      updates[`rooms/${roomId}/winner`] = 'none';
       updates[`rooms/${roomId}/gameState`] = 'ended';
-    } else if (blueLeft === 0) {
-      updates[`rooms/${roomId}/winner`] = 'blue';
-      updates[`rooms/${roomId}/gameState`] = 'ended';
-    } else if (card.role !== gameState.currentTurn) {
-      // Wrong card — switch turn
+      updates[`rooms/${roomId}/winReason`] = 'assassin';
+    } else if (card.role === 'green') {
+      const newGreenFound = (gameState.greenFound || 0) + 1;
+      updates[`rooms/${roomId}/greenFound`] = newGreenFound;
+      if (newGreenFound >= (gameState.greenTotal || 15)) {
+        updates[`rooms/${roomId}/winner`] = 'both';
+        updates[`rooms/${roomId}/gameState`] = 'ended';
+        updates[`rooms/${roomId}/winReason`] = 'allgreen';
+      }
+    } else {
+      // bystander — end turn, decrement turns
       const nextTurn = gameState.currentTurn === 'red' ? 'blue' : 'red';
+      const newTurnsLeft = (gameState.turnsLeft || 1) - 1;
       updates[`rooms/${roomId}/currentTurn`] = nextTurn;
       updates[`rooms/${roomId}/clue`] = { word: '', number: 0 };
+      updates[`rooms/${roomId}/turnsLeft`] = newTurnsLeft;
+      if (newTurnsLeft <= 0) {
+        updates[`rooms/${roomId}/gameState`] = 'ended';
+        updates[`rooms/${roomId}/winner`] = 'none';
+        updates[`rooms/${roomId}/winReason`] = 'timeout';
+      }
+    }
+  } else {
+    if (card.role === 'assassin') {
+      const loser = gameState.currentTurn;
+      const winner = loser === 'red' ? 'blue' : 'red';
+      updates[`rooms/${roomId}/winner`] = winner;
+      updates[`rooms/${roomId}/gameState`] = 'ended';
+      updates[`rooms/${roomId}/winReason`] = 'assassin';
+    } else {
+      const redLeft = newCards.filter(c => c.role === 'red' && !c.revealed).length;
+      const blueLeft = newCards.filter(c => c.role === 'blue' && !c.revealed).length;
+      updates[`rooms/${roomId}/score/red`] = redLeft;
+      updates[`rooms/${roomId}/score/blue`] = blueLeft;
+
+      if (redLeft === 0) {
+        updates[`rooms/${roomId}/winner`] = 'red';
+        updates[`rooms/${roomId}/gameState`] = 'ended';
+      } else if (blueLeft === 0) {
+        updates[`rooms/${roomId}/winner`] = 'blue';
+        updates[`rooms/${roomId}/gameState`] = 'ended';
+      } else if (card.role !== gameState.currentTurn) {
+        const nextTurn = gameState.currentTurn === 'red' ? 'blue' : 'red';
+        updates[`rooms/${roomId}/currentTurn`] = nextTurn;
+        updates[`rooms/${roomId}/clue`] = { word: '', number: 0 };
+      }
     }
   }
 
@@ -708,29 +882,52 @@ function renderBoard(state) {
 }
 
 function renderUI(state) {
-  // Score
-  document.getElementById('count-red').textContent = state.score.red;
-  document.getElementById('count-blue').textContent = state.score.blue;
+  const isDuet = state.mode === 'duet';
 
-  // Turn
-  const turnEl = document.getElementById('turn-display');
-  const redScore = document.getElementById('score-red');
-  const blueScore = document.getElementById('score-blue');
+  // Show correct scorebar
+  document.getElementById('scorebar-classic').style.display = isDuet ? 'none' : '';
+  document.getElementById('scorebar-duet').style.display = isDuet ? '' : 'none';
+
   const endTurnBtn = document.getElementById('end-turn-btn');
-  if (state.winner) {
-    turnEl.textContent = 'ENDED';
-    redScore.className = 'score-team red';
-    blueScore.className = 'score-team blue';
-    endTurnBtn.disabled = true;
-    endTurnBtn.style.opacity = '0.4';
-    endTurnBtn.style.cursor = 'not-allowed';
+
+  if (isDuet) {
+    document.getElementById('duet-green-found').textContent = state.greenFound || 0;
+    document.getElementById('duet-green-total').textContent = `/${state.greenTotal || 15}`;
+    document.getElementById('duet-turns-left').textContent = state.turnsLeft ?? 9;
+    document.getElementById('duet-turn-display').textContent = state.winner ? 'ENDED' : (state.currentTurn?.toUpperCase() || '—');
+
+    if (state.winner) {
+      endTurnBtn.disabled = true;
+      endTurnBtn.style.opacity = '0.4';
+      endTurnBtn.style.cursor = 'not-allowed';
+    } else {
+      endTurnBtn.disabled = false;
+      endTurnBtn.style.opacity = '';
+      endTurnBtn.style.cursor = '';
+    }
   } else {
-    turnEl.textContent = state.currentTurn.toUpperCase();
-    redScore.className = 'score-team ' + (state.currentTurn === 'red' ? 'active-red' : 'red');
-    blueScore.className = 'score-team ' + (state.currentTurn === 'blue' ? 'active-blue' : 'blue');
-    endTurnBtn.disabled = false;
-    endTurnBtn.style.opacity = '';
-    endTurnBtn.style.cursor = '';
+    document.getElementById('count-red').textContent = state.score?.red ?? 0;
+    document.getElementById('count-blue').textContent = state.score?.blue ?? 0;
+
+    const turnEl = document.getElementById('turn-display');
+    const redScore = document.getElementById('score-red');
+    const blueScore = document.getElementById('score-blue');
+
+    if (state.winner) {
+      turnEl.textContent = 'ENDED';
+      redScore.className = 'score-team red';
+      blueScore.className = 'score-team blue';
+      endTurnBtn.disabled = true;
+      endTurnBtn.style.opacity = '0.4';
+      endTurnBtn.style.cursor = 'not-allowed';
+    } else {
+      turnEl.textContent = state.currentTurn.toUpperCase();
+      redScore.className = 'score-team ' + (state.currentTurn === 'red' ? 'active-red' : 'red');
+      blueScore.className = 'score-team ' + (state.currentTurn === 'blue' ? 'active-blue' : 'blue');
+      endTurnBtn.disabled = false;
+      endTurnBtn.style.opacity = '';
+      endTurnBtn.style.cursor = '';
+    }
   }
 
   // Clue
@@ -740,7 +937,7 @@ function renderUI(state) {
     clueEl.innerHTML = `
       <span class="clue-label">CLUE</span>
       <span class="clue-word">${state.clue.word.toUpperCase()}</span>
-      <span class="clue-num">${state.clue.number}</span>
+      <span class="clue-num">${state.clue.number || '∞'}</span>
     `;
   } else {
     clueEl.className = 'clue-empty';
@@ -749,12 +946,27 @@ function renderUI(state) {
 
   // Win overlay
   if (state.winner) {
-    const colors = { red: '#c0392b', blue: '#2980b9' };
-    document.getElementById('win-title').style.color = colors[state.winner];
-    document.getElementById('win-title').textContent = `${state.winner.toUpperCase()} WINS!`;
-    document.getElementById('win-sub').textContent =
-      state.winReason === 'assassin' ? '💀 โดน Assassin!' : '🎉 เปิดการ์ดครบทุกใบ!';
-    document.getElementById('win-overlay').classList.remove('hidden');
+    const overlayEl = document.getElementById('win-overlay');
+    const titleEl = document.getElementById('win-title');
+    const subEl = document.getElementById('win-sub');
+
+    if (isDuet) {
+      if (state.winner === 'both') {
+        titleEl.style.color = '#27ae60';
+        titleEl.textContent = 'YOU WIN!';
+        subEl.textContent = '🎉 เปิดการ์ดเขียวครบทุกใบ!';
+      } else {
+        titleEl.style.color = '#e74c3c';
+        titleEl.textContent = 'GAME OVER';
+        subEl.textContent = state.winReason === 'assassin' ? '💀 โดน Assassin!' : '⏳ หมดตาแล้ว!';
+      }
+    } else {
+      const colors = { red: '#c0392b', blue: '#2980b9' };
+      titleEl.style.color = colors[state.winner] || '#e74c3c';
+      titleEl.textContent = `${state.winner.toUpperCase()} WINS!`;
+      subEl.textContent = state.winReason === 'assassin' ? '💀 โดน Assassin!' : '🎉 เปิดการ์ดครบทุกใบ!';
+    }
+    overlayEl.classList.remove('hidden');
   }
 
   // Status
@@ -768,6 +980,8 @@ function listenRoom() {
   unsubscribe = onValue(roomRef, (snap) => {
     if (snap.exists()) {
       gameState = snap.val();
+      // Sync selectedMode to match current game's mode for confirmNewGame
+      if (gameState.mode) selectedMode = gameState.mode;
       renderBoard(gameState);
       renderUI(gameState);
     }
@@ -777,7 +991,6 @@ function listenRoom() {
 // QR Code generator (simple)
 function generateQR(text) {
   const canvas = document.getElementById('qr-canvas');
-  // Use QR API
   const img = new Image();
   img.onload = () => {
     const ctx = canvas.getContext('2d');
@@ -810,7 +1023,6 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('spymaster-url').textContent = spymasterURL;
   generateQR(spymasterURL);
 
-  // Always show setup screen on load, but listen in background
   listenRoom();
 });
 </script>
