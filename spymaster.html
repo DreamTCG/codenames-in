@@ -14,6 +14,8 @@
     --neutral: #555;
     --assassin: #1a1a1a;
     --gold: #f39c12;
+    --green: #1e8449;
+    --green-light: #27ae60;
     --bg: #0d0d0d;
     --surface: #161616;
     --border: #2a2a2a;
@@ -64,6 +66,7 @@
   .team-btn:hover { opacity: 0.85; }
   .team-btn.red { background: var(--red-light); color: white; }
   .team-btn.blue { background: var(--blue-light); color: white; }
+  .team-btn.duet { background: var(--green-light); color: white; }
 
   /* HEADER */
   header {
@@ -106,6 +109,7 @@
   .ss-dot { width: 10px; height: 10px; border-radius: 50%; }
   .ss-dot.red { background: var(--red-light); }
   .ss-dot.blue { background: var(--blue-light); }
+  .ss-dot.green { background: var(--green-light); }
   .ss-spacer { flex: 1; }
   .ss-turn {
     font-size: 12px; letter-spacing: 2px;
@@ -186,12 +190,18 @@
     padding: 2px;
     line-height: 1.1;
   }
-  /* Spymaster sees colors */
+  /* Spymaster sees colors — classic */
   .card.red { background: var(--red); }
   .card.blue { background: var(--blue); }
   .card.neutral { background: #3a3a3a; }
   .card.assassin { background: #0a0a0a; border-color: #333; }
   .card.assassin .card-word { color: #444; }
+  .card.neutral .card-word { color: #aaa; }
+  /* Spymaster sees colors — duet */
+  .card.green { background: var(--green); }
+  .card.bystander { background: #3a3a3a; }
+  .card.bystander .card-word { color: #aaa; }
+  /* Revealed */
   .card.revealed { opacity: 0.35; }
   .card.revealed::after {
     content: '✓';
@@ -199,7 +209,8 @@
     font-size: 20px;
     color: rgba(255,255,255,0.6);
   }
-  .card.neutral .card-word { color: #aaa; }
+  /* Assassin skull marker */
+  .card.assassin.revealed::after { content: '💀'; }
 
   /* WIN OVERLAY */
   .overlay {
@@ -276,7 +287,8 @@
     font-size: 11px; color: var(--text-dim); font-style: italic;
   }
 
-
+  /* NOT YOUR TURN BANNER */
+  .not-turn-banner {
     background: #1a1a1a;
     border: 1px solid var(--border);
     padding: 10px 16px;
@@ -286,6 +298,7 @@
     letter-spacing: 1px;
     flex-shrink: 0;
   }
+  .not-turn-banner.hidden { display: none; }
 </style>
 </head>
 <body>
@@ -296,9 +309,10 @@
   <div class="ts-sub">SPYMASTER CONTROLLER</div>
   <div class="ts-label">ROOM</div>
   <div class="ts-room" id="ts-room">----</div>
-  <div class="ts-label" style="margin-top:8px;">เลือกทีมของคุณ</div>
-  <button class="team-btn red" onclick="selectTeam('red')">🔴 RED SPYMASTER</button>
-  <button class="team-btn blue" onclick="selectTeam('blue')">🔵 BLUE SPYMASTER</button>
+  <div class="ts-label" style="margin-top:8px;" id="ts-choose-label">เลือกทีมของคุณ</div>
+  <button class="team-btn red" id="btn-red" onclick="selectTeam('red')">🔴 RED SPYMASTER</button>
+  <button class="team-btn blue" id="btn-blue" onclick="selectTeam('blue')">🔵 BLUE SPYMASTER</button>
+  <button class="team-btn duet hidden" id="btn-duet" onclick="selectTeam('duet')">🤝 ENTER AS SPYMASTER</button>
 </div>
 
 <!-- HEADER -->
@@ -309,17 +323,8 @@
 </header>
 
 <!-- SCORE STRIP -->
-<div class="scorestrip">
-  <div class="ss-item">
-    <div class="ss-dot red"></div>
-    <span id="ss-red">0</span>
-  </div>
-  <div class="ss-item">
-    <div class="ss-dot blue"></div>
-    <span id="ss-blue">0</span>
-  </div>
-  <div class="ss-spacer"></div>
-  <div class="ss-turn">TURN: <span id="ss-turn">—</span></div>
+<div class="scorestrip" id="scorestrip">
+  <!-- populated by renderScoreStrip() -->
 </div>
 
 <!-- NOT YOUR TURN BANNER -->
@@ -360,7 +365,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getDatabase, ref, onValue, update, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDDImomngpU2PIY4Su75Drb2u-xGhSoK5M",
@@ -376,22 +381,55 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 let roomId = null;
-let myTeam = null;
+let myTeam = null;  // 'red' | 'blue' | 'duet'
 let gameState = null;
 let selectedNum = null;
 
-const teamColors = { red: '#e74c3c', blue: '#2980b9' };
+const teamColors = { red: '#e74c3c', blue: '#2980b9', duet: '#27ae60' };
 
 function getRoomFromURL() {
   return new URLSearchParams(window.location.search).get('room');
 }
 
+// Fetch mode and adjust team-select screen before user picks
+async function setupTeamScreen() {
+  try {
+    const snap = await get(ref(db, `rooms/${roomId}/mode`));
+    const mode = snap.exists() ? snap.val() : 'classic';
+    applyTeamScreenMode(mode);
+  } catch (e) {
+    applyTeamScreenMode('classic');
+  }
+}
+
+function applyTeamScreenMode(mode) {
+  if (mode === 'duet') {
+    document.getElementById('btn-red').classList.add('hidden');
+    document.getElementById('btn-blue').classList.add('hidden');
+    document.getElementById('btn-duet').classList.remove('hidden');
+    document.getElementById('ts-choose-label').textContent = 'Duet Mode';
+  } else {
+    document.getElementById('btn-red').classList.remove('hidden');
+    document.getElementById('btn-blue').classList.remove('hidden');
+    document.getElementById('btn-duet').classList.add('hidden');
+    document.getElementById('ts-choose-label').textContent = 'เลือกทีมของคุณ';
+  }
+}
+
 window.selectTeam = function(team) {
   myTeam = team;
   document.getElementById('team-screen').classList.add('hidden');
-  document.getElementById('h-team').textContent = team.toUpperCase() + ' SPYMASTER';
-  document.getElementById('h-team').style.color = teamColors[team];
-  document.body.style.setProperty('--team-color', teamColors[team]);
+
+  const color = teamColors[team] || '#888';
+  document.body.style.setProperty('--team-color', color);
+
+  if (team === 'duet') {
+    document.getElementById('h-team').textContent = 'DUET SPYMASTER';
+  } else {
+    document.getElementById('h-team').textContent = team.toUpperCase() + ' SPYMASTER';
+  }
+  document.getElementById('h-team').style.color = color;
+
   listenRoom();
 }
 
@@ -415,7 +453,11 @@ function buildNumSelect() {
 
 function checkSendReady() {
   const word = document.getElementById('clue-word-input').value.trim();
-  const ready = word.length > 0 && selectedNum !== null && gameState?.currentTurn === myTeam && gameState?.gameState === 'playing';
+  const isDuet = gameState?.mode === 'duet';
+  const isMyTurn = isDuet
+    ? gameState?.gameState === 'playing'
+    : gameState?.currentTurn === myTeam && gameState?.gameState === 'playing';
+  const ready = word.length > 0 && selectedNum !== null && isMyTurn;
   document.getElementById('send-clue-btn').disabled = !ready;
 }
 
@@ -433,11 +475,58 @@ window.sendClue = function() {
 
 window.endTurn = function() {
   if (!gameState || gameState.gameState !== 'playing') return;
-  const nextTurn = gameState.currentTurn === 'red' ? 'blue' : 'red';
-  update(ref(db), {
-    [`rooms/${roomId}/currentTurn`]: nextTurn,
-    [`rooms/${roomId}/clue`]: { word: '', number: 0 }
-  });
+  const isDuet = gameState.mode === 'duet';
+  if (isDuet) {
+    const nextTurn = gameState.currentTurn === 'red' ? 'blue' : 'red';
+    const newTurnsLeft = (gameState.turnsLeft || 1) - 1;
+    const updates = {
+      [`rooms/${roomId}/currentTurn`]: nextTurn,
+      [`rooms/${roomId}/clue`]: { word: '', number: 0 },
+      [`rooms/${roomId}/turnsLeft`]: newTurnsLeft
+    };
+    if (newTurnsLeft <= 0) {
+      updates[`rooms/${roomId}/gameState`] = 'ended';
+      updates[`rooms/${roomId}/winner`] = 'none';
+      updates[`rooms/${roomId}/winReason`] = 'timeout';
+    }
+    update(ref(db), updates);
+  } else {
+    const nextTurn = gameState.currentTurn === 'red' ? 'blue' : 'red';
+    update(ref(db), {
+      [`rooms/${roomId}/currentTurn`]: nextTurn,
+      [`rooms/${roomId}/clue`]: { word: '', number: 0 }
+    });
+  }
+}
+
+function renderScoreStrip(state) {
+  const strip = document.getElementById('scorestrip');
+  const isDuet = state.mode === 'duet';
+  if (isDuet) {
+    strip.innerHTML = `
+      <div class="ss-item">
+        <div class="ss-dot green"></div>
+        <span>${state.greenFound || 0}/${state.greenTotal || 15}</span>
+      </div>
+      <div class="ss-spacer"></div>
+      <div class="ss-turn">⏳ TURNS LEFT: <span>${state.turnsLeft ?? 9}</span></div>
+      <div style="width:8px;"></div>
+      <div class="ss-turn">TURN: <span id="ss-turn">${state.currentTurn?.toUpperCase() || '—'}</span></div>
+    `;
+  } else {
+    strip.innerHTML = `
+      <div class="ss-item">
+        <div class="ss-dot red"></div>
+        <span id="ss-red">${state.score?.red ?? 0}</span>
+      </div>
+      <div class="ss-item">
+        <div class="ss-dot blue"></div>
+        <span id="ss-blue">${state.score?.blue ?? 0}</span>
+      </div>
+      <div class="ss-spacer"></div>
+      <div class="ss-turn">TURN: <span id="ss-turn">${state.currentTurn?.toUpperCase() || '—'}</span></div>
+    `;
+  }
 }
 
 function renderBoard(state) {
@@ -462,14 +551,20 @@ window.toggleCluePanel = function() {
 }
 
 function renderUI(state) {
-  document.getElementById('ss-red').textContent = state.score.red;
-  document.getElementById('ss-blue').textContent = state.score.blue;
-  document.getElementById('ss-turn').textContent = state.currentTurn?.toUpperCase() || '—';
+  renderScoreStrip(state);
 
-  const isMyTurn = state.currentTurn === myTeam;
-  document.getElementById('not-turn-banner').classList.toggle('hidden', isMyTurn || state.gameState === 'ended');
+  const isDuet = state.mode === 'duet';
 
-  // Toggle btn enabled only on my turn
+  // In duet, "my turn" means the game is still playing (either player can give clues)
+  const isMyTurn = isDuet
+    ? state.gameState === 'playing'
+    : state.currentTurn === myTeam;
+
+  document.getElementById('not-turn-banner').classList.toggle(
+    'hidden',
+    isMyTurn || state.gameState === 'ended'
+  );
+
   const toggleBtn = document.getElementById('toggle-clue-btn');
   toggleBtn.disabled = !isMyTurn || state.gameState === 'ended';
   if (!isMyTurn && cluePanelOpen) {
@@ -484,9 +579,9 @@ function renderUI(state) {
   if (state.clue && state.clue.word) {
     ccEl.className = '';
     ccEl.innerHTML = `
-      <span class="cc-label">CLUE</span>
-      <span class="cc-word">${state.clue.word.toUpperCase()}</span>
-      <span class="cc-num">${state.clue.number || '∞'}</span>
+      <span class="cc-label" style="font-size:10px;letter-spacing:2px;color:var(--text-dim);">CLUE</span>
+      <span style="font-family:'Bebas Neue',cursive;font-size:18px;letter-spacing:2px;color:var(--gold);">${state.clue.word.toUpperCase()}</span>
+      <span style="font-family:'Bebas Neue',cursive;font-size:16px;color:var(--text-dim);">${state.clue.number || '∞'}</span>
     `;
   } else {
     ccEl.className = 'cc-empty';
@@ -496,13 +591,45 @@ function renderUI(state) {
   checkSendReady();
 
   if (state.winner) {
-    const colors = { red: '#e74c3c', blue: '#2980b9' };
-    document.getElementById('ov-title').style.color = colors[state.winner];
-    document.getElementById('ov-title').textContent = `${state.winner.toUpperCase()} WINS!`;
-    document.getElementById('ov-sub').textContent = state.winReason === 'assassin' ? '💀 โดน Assassin!' : '🎉 เปิดการ์ดครบ!';
+    const titleEl = document.getElementById('ov-title');
+    const subEl = document.getElementById('ov-sub');
+    if (isDuet) {
+      if (state.winner === 'both') {
+        titleEl.style.color = '#27ae60';
+        titleEl.textContent = 'YOU WIN!';
+        subEl.textContent = '🎉 เปิดการ์ดเขียวครบทุกใบ!';
+      } else {
+        titleEl.style.color = '#e74c3c';
+        titleEl.textContent = 'GAME OVER';
+        subEl.textContent = state.winReason === 'assassin' ? '💀 โดน Assassin!' : '⏳ หมดตาแล้ว!';
+      }
+    } else {
+      const colors = { red: '#e74c3c', blue: '#2980b9' };
+      titleEl.style.color = colors[state.winner] || '#e74c3c';
+      titleEl.textContent = `${state.winner.toUpperCase()} WINS!`;
+      subEl.textContent = state.winReason === 'assassin' ? '💀 โดน Assassin!' : '🎉 เปิดการ์ดครบ!';
+    }
     document.getElementById('win-overlay').classList.remove('hidden');
   } else {
     document.getElementById('win-overlay').classList.add('hidden');
+  }
+
+  // Also update team screen mode buttons if user hasn't selected yet
+  if (state.mode) applyTeamScreenMode(state.mode);
+}
+
+// Re-declared here so renderUI can call it without a circular dependency issue
+function applyTeamScreenMode(mode) {
+  if (mode === 'duet') {
+    document.getElementById('btn-red').classList.add('hidden');
+    document.getElementById('btn-blue').classList.add('hidden');
+    document.getElementById('btn-duet').classList.remove('hidden');
+    document.getElementById('ts-choose-label').textContent = 'Duet Mode';
+  } else {
+    document.getElementById('btn-red').classList.remove('hidden');
+    document.getElementById('btn-blue').classList.remove('hidden');
+    document.getElementById('btn-duet').classList.add('hidden');
+    document.getElementById('ts-choose-label').textContent = 'เลือกทีมของคุณ';
   }
 }
 
@@ -528,6 +655,9 @@ window.addEventListener('DOMContentLoaded', () => {
   buildNumSelect();
 
   document.getElementById('clue-word-input').addEventListener('input', checkSendReady);
+
+  // Detect mode from Firebase to show correct team-select buttons
+  setupTeamScreen();
 });
 </script>
 </body>
