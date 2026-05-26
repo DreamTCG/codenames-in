@@ -468,6 +468,12 @@
   </div>
   <div class="setup-sub">ให้ Spymaster scan QR หรือเปิด URL บนมือถือ</div>
 
+  <div class="mode-label">เลือกภาษาคำศัพท์</div>
+  <div class="mode-selector">
+    <button class="mode-btn selected" id="lang-en" onclick="selectLang('en')">🇬🇧 English</button>
+    <button class="mode-btn" id="lang-th" onclick="selectLang('th')">🇹🇭 ภาษาไทย</button>
+  </div>
+
   <div class="mode-label">เลือกโหมดเกม</div>
   <div class="mode-selector">
     <button class="mode-btn selected" id="mode-classic" onclick="selectMode('classic')">🎯 Classic 4-Player</button>
@@ -629,7 +635,7 @@ document.addEventListener('keydown', function(e) {
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, set, get, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-import { WORDS } from "./words.js";
+import { WORDS, THAI_WORDS } from "./words.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDDImomngpU2PIY4Su75Drb2u-xGhSoK5M",
@@ -648,6 +654,7 @@ let roomId = null;
 let gameState = null;
 let unsubscribe = null;
 let selectedMode = 'classic';
+let selectedLang = 'en';
 
 function getRoomFromURL() {
   return new URLSearchParams(window.location.search).get('room');
@@ -662,6 +669,12 @@ window.selectMode = function(mode) {
   selectedMode = mode;
   document.getElementById('mode-classic').className = 'mode-btn' + (mode === 'classic' ? ' selected' : '');
   document.getElementById('mode-duet').className = 'mode-btn' + (mode === 'duet' ? ' selected-green' : '');
+}
+
+window.selectLang = function(lang) {
+  selectedLang = lang;
+  document.getElementById('lang-en').className = 'mode-btn' + (lang === 'en' ? ' selected' : '');
+  document.getElementById('lang-th').className = 'mode-btn' + (lang === 'th' ? ' selected' : '');
 }
 
 window.newRoom = function() {
@@ -738,7 +751,8 @@ function createNewGame(mode) {
 }
 
 function createClassicGame() {
-  const words = shuffle(WORDS).slice(0, 25);
+  const wordList = selectedLang === 'th' ? THAI_WORDS : WORDS;
+  const words = shuffle(wordList).slice(0, 25);
   const startTeam = Math.random() < 0.5 ? 'red' : 'blue';
   const roles = [];
   const redCount = startTeam === 'red' ? 9 : 8;
@@ -757,6 +771,7 @@ function createClassicGame() {
 
   const newState = {
     mode: 'classic',
+    lang: selectedLang,
     gameState: 'playing',
     currentTurn: startTeam,
     startingTeam: startTeam,
@@ -771,7 +786,8 @@ function createClassicGame() {
 }
 
 function createDuetGame() {
-  const words = shuffle(WORDS).slice(0, 25);
+  const wordList = selectedLang === 'th' ? THAI_WORDS : WORDS;
+  const words = shuffle(wordList).slice(0, 25);
   const roles = [];
   for (let i = 0; i < 15; i++) roles.push('green');
   for (let i = 0; i < 3; i++) roles.push('assassin');
@@ -786,6 +802,7 @@ function createDuetGame() {
 
   const newState = {
     mode: 'duet',
+    lang: selectedLang,
     gameState: 'playing',
     currentTurn: 'red',
     startingTeam: 'red',
