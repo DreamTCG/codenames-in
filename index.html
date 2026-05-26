@@ -249,10 +249,18 @@
     position: fixed; inset: 0;
     background: var(--bg);
     display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
+    align-items: center;
     gap: 16px; z-index: 200;
     overflow-y: auto;
-    padding: 24px 16px;
+    padding: 40px 16px;
+  }
+  /* Inner wrapper handles vertical centering without cutting off overflow */
+  #setup-inner {
+    display: flex; flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    margin: auto;
+    width: 100%;
   }
   #setup-screen.hidden { display: none; }
   .setup-title {
@@ -461,30 +469,32 @@
 
 <!-- SETUP SCREEN -->
 <div id="setup-screen">
-  <div class="setup-title">CODENAMES</div>
-  <div class="setup-sub">BOARD DISPLAY — จอใหญ่</div>
-  <div id="room-display" class="setup-room">----</div>
-  <div id="spymaster-url" class="setup-url">กำลังสร้าง Room...</div>
-  <div class="qr-wrap">
-    <canvas id="qr-canvas"></canvas>
-  </div>
-  <div class="setup-sub">ให้ Spymaster scan QR หรือเปิด URL บนมือถือ</div>
+  <div id="setup-inner">
+    <div class="setup-title">CODENAMES</div>
+    <div class="setup-sub">BOARD DISPLAY — จอใหญ่</div>
+    <div id="room-display" class="setup-room">----</div>
+    <div id="spymaster-url" class="setup-url">กำลังสร้าง Room...</div>
+    <div class="qr-wrap">
+      <canvas id="qr-canvas"></canvas>
+    </div>
+    <div class="setup-sub">ให้ Spymaster scan QR หรือเปิด URL บนมือถือ</div>
 
-  <div class="mode-label">เลือกภาษาคำศัพท์</div>
-  <div class="mode-selector">
-    <button class="mode-btn selected" id="lang-en" onclick="selectLang('en')">🇬🇧 English</button>
-    <button class="mode-btn" id="lang-th" onclick="selectLang('th')">🇹🇭 ภาษาไทย</button>
-  </div>
+    <div class="mode-label">เลือกภาษาคำศัพท์</div>
+    <div class="mode-selector">
+      <button class="mode-btn selected" id="lang-en" onclick="selectLang('en')">🇬🇧 English</button>
+      <button class="mode-btn" id="lang-th" onclick="selectLang('th')">🇹🇭 ภาษาไทย</button>
+    </div>
 
-  <div class="mode-label">เลือกโหมดเกม</div>
-  <div class="mode-selector">
-    <button class="mode-btn selected" id="mode-classic" onclick="selectMode('classic')">🎯 Classic 4-Player</button>
-    <button class="mode-btn" id="mode-duet" onclick="selectMode('duet')">🤝 Duet 2-Player</button>
-  </div>
+    <div class="mode-label">เลือกโหมดเกม</div>
+    <div class="mode-selector">
+      <button class="mode-btn selected" id="mode-classic" onclick="selectMode('classic')">🎯 Classic 4-Player</button>
+      <button class="mode-btn" id="mode-duet" onclick="selectMode('duet')">🤝 Duet 2-Player</button>
+    </div>
 
-  <div class="btn-row">
-    <button class="btn" onclick="startGame()">🎮 เริ่มเกม</button>
-    <button class="btn btn-outline" onclick="newRoom()">🔄 Room ใหม่</button>
+    <div class="btn-row">
+      <button class="btn" onclick="startGame()">🎮 เริ่มเกม</button>
+      <button class="btn btn-outline" onclick="newRoom()">🔄 Room ใหม่</button>
+    </div>
   </div>
 </div>
 
@@ -657,6 +667,7 @@ let gameState = null;
 let unsubscribe = null;
 let selectedMode = 'classic';
 let selectedLang = 'en';
+let initialLoad = true;
 
 function getRoomFromURL() {
   return new URLSearchParams(window.location.search).get('room');
@@ -997,9 +1008,10 @@ function listenRoom() {
   if (unsubscribe) unsubscribe();
   const roomRef = ref(db, `rooms/${roomId}`);
   unsubscribe = onValue(roomRef, (snap) => {
+    const isInitial = initialLoad;
+    initialLoad = false;
     if (snap.exists()) {
       gameState = snap.val();
-      // Sync selectedMode to match current game's mode for confirmNewGame
       if (gameState.mode) {
         selectedMode = gameState.mode;
         document.getElementById('mode-classic').className = 'mode-btn' + (selectedMode === 'classic' ? ' selected' : '');
@@ -1009,6 +1021,10 @@ function listenRoom() {
         selectedLang = gameState.lang;
         document.getElementById('lang-en').className = 'mode-btn' + (selectedLang === 'en' ? ' selected' : '');
         document.getElementById('lang-th').className = 'mode-btn' + (selectedLang === 'th' ? ' selected' : '');
+      }
+      // Auto-dismiss setup screen on first load if a game already exists
+      if (isInitial && gameState.cards) {
+        document.getElementById('setup-screen').classList.add('hidden');
       }
       renderBoard(gameState);
       renderUI(gameState);
